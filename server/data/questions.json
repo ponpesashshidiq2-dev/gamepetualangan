@@ -1,0 +1,17 @@
+[
+  {
+    "id": "q_mwn4g94731254c39",
+    "pertanyaan": "Soal pengganti?",
+    "tipe": "pg",
+    "opsi": [
+      "A",
+      "B"
+    ],
+    "kunci": 1,
+    "poin": 10,
+    "kategori": "",
+    "aktif": true,
+    "dibuat": "2026-11-19T05:40:43.687Z",
+    "diubah": "2026-11-19T05:40:43.687Z"
+  }
+]

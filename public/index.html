@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Petualangan Soal — Game 3D Edukasi</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/game.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+
+<!-- ================= LAYAR IDENTITAS ================= -->
+<section id="screen-identitas" class="screen">
+  <div class="kartu kartu-utama">
+    <div class="brand">
+      <div class="brand-ikon" aria-hidden="true"></div>
+      <div>
+        <h1>Petualangan Soal</h1>
+        <p class="brand-sub">Game 3D Edukasi — jelajahi pulau, temukan kristal soal, dan raih skor tertinggi!</p>
+      </div>
+    </div>
+
+    <form id="form-identitas" autocomplete="off">
+      <label class="field">
+        <span>Nama Lengkap <b>*</b></span>
+        <input type="text" id="in-nama" maxlength="80" placeholder="cth. Budi Santoso" required>
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>Kelas</span>
+          <input type="text" id="in-kelas" maxlength="40" placeholder="cth. VIII A">
+        </label>
+        <label class="field">
+          <span>NIS</span>
+          <input type="text" id="in-nis" maxlength="40" placeholder="cth. 231045">
+        </label>
+      </div>
+      <label class="field">
+        <span>Kode Grup <small>(opsional)</small></span>
+        <input type="text" id="in-grup" maxlength="40" placeholder="cth. GRUP-01">
+      </label>
+
+      <p id="identitas-error" class="pesan-error hidden"></p>
+      <button type="submit" class="btn btn-utama btn-blok">Mulai Petualangan</button>
+    </form>
+
+    <div class="kartu-info">
+      <h3>Kontrol</h3>
+      <ul>
+        <li><b>WASD / Panah</b> — bergerak &nbsp;·&nbsp; <b>Space</b> — lompat</li>
+        <li><b>Mouse</b> — putar kamera (klik layar untuk kunci kursor) &nbsp;·&nbsp; <b>E</b> — buka soal</li>
+        <li>Layar sentuh: joystick kiri, seret layar kanan untuk kamera, tombol LOMPAT / BUKA</li>
+      </ul>
+    </div>
+
+    <div class="kartu-info kartu-sesi hidden" id="kartu-sesi">
+      <h3>Sesi Tersimpan</h3>
+      <p id="sesi-info"></p>
+      <div class="btn-baris">
+        <button type="button" id="btn-lanjut" class="btn btn-utama">Lanjutkan Bermain</button>
+        <button type="button" id="btn-sesi-baru" class="btn btn-ghost">Mulai Baru</button>
+      </div>
+    </div>
+
+    <footer class="kartu-footer">Data nilai tersimpan otomatis · <a href="/admin">Panel Admin</a></footer>
+  </div>
+</section>
+
+<!-- ================= LAYAR LOADING ================= -->
+<section id="screen-loading" class="screen hidden">
+  <div class="kartu kartu-loading">
+    <div class="spinner"></div>
+    <p id="loading-teks">Menyiapkan pulau...</p>
+  </div>
+</section>
+
+<!-- ================= LAYAR GAME 3D ================= -->
+<main id="game-container" class="hidden">
+  <canvas id="canvas3d"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="hud-kiri panel-hud">
+      <div class="hud-baris"><span class="hud-label">Pemain</span><b id="hud-nama">—</b></div>
+      <div class="hud-baris"><span class="hud-label">Skor</span><b id="hud-skor" class="aksen">0</b></div>
+      <div class="hud-baris"><span class="hud-label">Benar</span><b id="hud-benar">0/0</b></div>
+      <div class="hud-baris"><span class="hud-label">Waktu</span><b id="hud-waktu">00:00</b></div>
+      <div class="progress"><div id="hud-progress" class="progress-isi"></div></div>
+      <div id="hud-progress-teks" class="progress-teks">0 dari 0 soal</div>
+    </div>
+
+    <div class="hud-kanan">
+      <div class="panel-hud panel-minimap">
+        <canvas id="minimap" width="168" height="168"></canvas>
+        <div id="minimap-jarak" class="minimap-jarak">Mencari soal...</div>
+      </div>
+      <div class="btn-vertikal">
+        <button id="btn-bantuan" class="btn btn-mini" type="button">Kontrol</button>
+        <button id="btn-selesai" class="btn btn-mini btn-waspada" type="button">Selesai</button>
+      </div>
+    </div>
+
+    <div id="interact-prompt" class="interact hidden">
+      <kbd>E</kbd> <span id="interact-teks">Buka Soal</span>
+    </div>
+
+    <div id="info-soal-terakhir" class="info-terakhir hidden"></div>
+
+    <!-- Kontrol layar sentuh -->
+    <div id="touch-controls" class="hidden">
+      <div id="joystick"><div id="joystick-knop"></div></div>
+      <div class="tombol-kanan">
+        <button id="btn-mobile-jump" class="btn-touch" type="button">LOMPAT</button>
+        <button id="btn-mobile-act" class="btn-touch btn-touch-utama" type="button">BUKA</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ================= LAYAR FALLBACK 2D ================= -->
+<section id="screen-fallback" class="screen hidden">
+  <div class="kartu kartu-utama">
+    <h2>Mode 2D Darurat</h2>
+    <p class="brand-sub" id="fallback-alasan">Perangkat ini tidak mendukung WebGL.</p>
+    <div id="fallback-konten"></div>
+  </div>
+</section>
+
+<!-- ================= MODAL SOAL ================= -->
+<div id="modal-soal" class="overlay hidden">
+  <div class="kartu kartu-soal" role="dialog" aria-modal="true">
+    <div class="soal-header">
+      <span class="badge" id="soal-kategori">Umum</span>
+      <span class="badge badge-poin" id="soal-poin">10 poin</span>
+      <span class="badge badge-tipe" id="soal-tipe">Pilihan Ganda</span>
+    </div>
+    <h2 id="soal-pertanyaan">Pertanyaan</h2>
+
+    <div id="soal-opsi" class="opsi-list"></div>
+
+    <div id="soal-isian" class="isian-wrap hidden">
+      <input type="text" id="input-isian" maxlength="160" placeholder="Ketik jawabanmu...">
+      <button type="button" id="btn-kirim-isian" class="btn btn-utama">Kirim Jawaban</button>
+    </div>
+
+    <div id="soal-feedback" class="feedback hidden"></div>
+
+    <div class="modal-actions">
+      <button type="button" id="btn-tutup-soal" class="btn btn-ghost hidden">Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL RINGKASAN AKHIR ================= -->
+<div id="modal-hasil" class="overlay hidden">
+  <div class="kartu kartu-hasil" role="dialog" aria-modal="true">
+    <h2 id="hasil-judul">Ringkasan Petualangan</h2>
+    <p id="hasil-identitas" class="hasil-identitas">—</p>
+    <div class="hasil-grid">
+      <div class="hasil-item hasil-utama"><span>Skor Akhir</span><strong id="hasil-skor">0</strong></div>
+      <div class="hasil-item"><span>Benar</span><strong id="hasil-benar">0</strong></div>
+      <div class="hasil-item"><span>Salah</span><strong id="hasil-salah">0</strong></div>
+      <div class="hasil-item"><span>Persentase</span><strong id="hasil-persen">0%</strong></div>
+      <div class="hasil-item"><span>Waktu</span><strong id="hasil-waktu">00:00</strong></div>
+      <div class="hasil-item"><span>Total Soal</span><strong id="hasil-total">0</strong></div>
+    </div>
+    <p id="hasil-status" class="status-simpan">Tersimpan ke daftar nilai</p>
+    <div class="btn-baris">
+      <button type="button" id="btn-main-lagi" class="btn btn-utama">Main Lagi</button>
+      <button type="button" id="btn-ganti-pemain" class="btn btn-ghost">Ganti Pemain</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL BANTUAN ================= -->
+<div id="modal-bantuan" class="overlay hidden">
+  <div class="kartu kartu-bantuan" role="dialog" aria-modal="true">
+    <h2>Kontrol Permainan</h2>
+    <div class="bantuan-kolom">
+      <div>
+        <h3>Komputer</h3>
+        <ul>
+          <li><b>W A S D / Panah</b> — bergerak</li>
+          <li><b>Space</b> — lompat</li>
+          <li><b>Mouse</b> — putar kamera (klik layar untuk mode kunci kursor)</li>
+          <li><b>Esc</b> — lepas kursor</li>
+          <li><b>E</b> — buka soal terdekat</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Layar Sentuh</h3>
+        <ul>
+          <li><b>Joystick kiri</b> — bergerak</li>
+          <li><b>Seret layar (kanan)</b> — putar kamera</li>
+          <li><b>LOMPAT</b> — melompat</li>
+          <li><b>BUKA</b> — buka soal terdekat</li>
+        </ul>
+      </div>
+    </div>
+    <p class="bantuan-catatan">Minimap di kanan atas menunjukkan arah kristal soal yang belum terjawab (kuning = belum, hijau = selesai).</p>
+    <div class="modal-actions">
+      <button type="button" id="btn-tutup-bantuan" class="btn btn-utama">Mengerti</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL KONFIRMASI ================= -->
+<div id="modal-konfirmasi" class="overlay hidden">
+  <div class="kartu kartu-konfirmasi" role="dialog" aria-modal="true">
+    <h2 id="konfirmasi-judul">Konfirmasi</h2>
+    <p id="konfirmasi-teks">—</p>
+    <div class="btn-baris">
+      <button type="button" id="btn-konfirmasi-ya" class="btn btn-utama">Ya</button>
+      <button type="button" id="btn-konfirmasi-tidak" class="btn btn-ghost">Batal</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  // Penjaga: bila modul utama gagal dimuat (mis. server statis salah), tampilkan pesan.
+  setTimeout(function () {
+    if (!window.__GP_BOOT) {
+      var p = document.getElementById('identitas-error');
+      if (p) {
+        p.textContent = 'Modul permainan gagal dimuat. Pastikan aplikasi dibuka melalui server (bukan klik ganda file index.html), lalu muat ulang halaman.';
+        p.classList.remove('hidden');
+      }
+    }
+  }, 4000);
+</script>
+<script type="module" src="js/game/main.js"></script>
+</body>
+</html>

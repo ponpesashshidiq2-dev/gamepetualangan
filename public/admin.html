@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Admin — Petualangan Soal</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<section id="screen-login" class="login-wrap">
+  <form id="form-login" class="login-kartu" autocomplete="off">
+    <div class="login-ikon"></div>
+    <h1>Panel Admin</h1>
+    <p>Petualangan Soal — masukkan password untuk mengelola soal &amp; daftar nilai.</p>
+    <label class="f-field">
+      <span>Password Admin</span>
+      <input type="password" id="in-password" placeholder="••••••••" required autofocus>
+    </label>
+    <p id="login-error" class="f-error hidden"></p>
+    <button type="submit" class="btn btn-utama btn-blok">Masuk</button>
+    <a class="login-kembali" href="/">Kembali ke permainan</a>
+  </form>
+</section>
+
+<!-- ================= APLIKASI ================= -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand-admin">
+      <span class="brand-mark"></span>
+      <div>
+        <b>Panel Admin</b>
+        <small>Petualangan Soal</small>
+      </div>
+    </div>
+    <nav class="tab-nav" id="tab-nav">
+      <button type="button" data-tab="soal" class="aktif">Kelola Soal</button>
+      <button type="button" data-tab="nilai">Daftar Nilai</button>
+      <button type="button" data-tab="pengaturan">Pengaturan</button>
+    </nav>
+    <div class="topbar-kanan">
+      <a href="/" class="btn btn-ghost btn-kecil" target="_blank">Buka Game</a>
+      <button type="button" id="btn-logout" class="btn btn-kecil">Keluar</button>
+    </div>
+  </header>
+
+  <main class="konten">
+
+    <!-- ============== TAB SOAL ============== -->
+    <section id="tab-soal" class="tab">
+      <div class="ringkas-kecil">
+        <div class="kartu-ringkas"><span>Total Soal</span><b id="ringkas-total-soal">0</b></div>
+        <div class="kartu-ringkas"><span>Aktif</span><b id="ringkas-soal-aktif">0</b></div>
+        <div class="kartu-ringkas"><span>Total Poin</span><b id="ringkas-total-poin">0</b></div>
+        <div class="aksi-bar">
+          <button type="button" id="btn-tambah-soal" class="btn btn-utama">+ Tambah Soal</button>
+          <button type="button" id="btn-import" class="btn">Import JSON / CSV</button>
+          <button type="button" id="btn-export-json" class="btn">Export JSON</button>
+          <button type="button" id="btn-export-csv" class="btn">Export CSV</button>
+          <button type="button" id="btn-refresh-soal" class="btn btn-ghost">Muat Ulang</button>
+        </div>
+      </div>
+
+      <div class="kartu-tabel">
+        <div class="tabel-scroll">
+          <table id="tabel-soal">
+            <thead>
+              <tr>
+                <th class="kol-no">#</th>
+                <th>Pertanyaan</th>
+                <th>Tipe</th>
+                <th>Opsi / Kunci</th>
+                <th class="kol-angka">Poin</th>
+                <th>Kategori</th>
+                <th>Status</th>
+                <th class="kol-aksi">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-soal"></tbody>
+          </table>
+        </div>
+        <p id="tabel-soal-kosong" class="tabel-kosong hidden">Belum ada soal. Klik "Tambah Soal" atau "Import JSON / CSV".</p>
+      </div>
+    </section>
+
+    <!-- ============== TAB NILAI ============== -->
+    <section id="tab-nilai" class="tab hidden">
+      <div class="ringkas-kecil">
+        <div class="kartu-ringkas"><span>Pemain</span><b id="rk-pemain">0</b></div>
+        <div class="kartu-ringkas"><span>Sedang Main</span><b id="rk-main">0</b></div>
+        <div class="kartu-ringkas"><span>Selesai</span><b id="rk-selesai">0</b></div>
+        <div class="kartu-ringkas"><span>Skor Tertinggi</span><b id="rk-tertinggi">0</b></div>
+        <div class="kartu-ringkas"><span>Rata-rata</span><b id="rk-rata">0</b></div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="search" id="cari-nilai" placeholder="Cari nama / kelas / NIS / grup..." class="inp-cari">
+        <label class="f-field kecil"><span>Status</span>
+          <select id="filter-status">
+            <option value="">Semua</option>
+            <option value="playing">Sedang Main</option>
+            <option value="done">Selesai</option>
+          </select>
+        </label>
+        <label class="f-field kecil"><span>Kelas</span>
+          <select id="filter-kelas"><option value="">Semua</option></select>
+        </label>
+        <label class="f-field kecil"><span>Urutkan</span>
+          <select id="sort-nilai">
+            <option value="skor_desc">Skor tertinggi</option>
+            <option value="skor_asc">Skor terendah</option>
+            <option value="persen_desc">Persentase tertinggi</option>
+            <option value="baru_desc">Terbaru</option>
+            <option value="lama_asc">Terlama</option>
+            <option value="nama_asc">Nama A–Z</option>
+          </select>
+        </label>
+        <div class="aksi-bar">
+          <button type="button" id="btn-refresh-nilai" class="btn btn-ghost">Muat Ulang</button>
+          <button type="button" id="btn-export-nilai" class="btn">Export CSV</button>
+          <button type="button" id="btn-reset-nilai" class="btn btn-danger">Reset Semua</button>
+        </div>
+      </div>
+
+      <div class="kartu-tabel">
+        <div class="tabel-scroll">
+          <table id="tabel-nilai">
+            <thead>
+              <tr>
+                <th class="kol-no">#</th>
+                <th>Nama Pemain</th>
+                <th>Kelas</th>
+                <th>NIS / Grup</th>
+                <th class="kol-angka">Skor</th>
+                <th>Benar/Total</th>
+                <th class="kol-angka">%</th>
+                <th>Waktu</th>
+                <th>Status</th>
+                <th>Waktu Submit</th>
+                <th class="kol-aksi">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-nilai"></tbody>
+          </table>
+        </div>
+        <p id="tabel-nilai-kosong" class="tabel-kosong hidden">Belum ada data nilai.</p>
+      </div>
+      <p class="catatan-tabel" id="nilai-catatan"></p>
+    </section>
+
+    <!-- ============== TAB PENGATURAN ============== -->
+    <section id="tab-pengaturan" class="tab hidden">
+      <div class="grid-pengaturan">
+        <div class="kartu-blok">
+          <h2>Paket Soal</h2>
+          <label class="saklar-bar">
+            <input type="checkbox" id="sw-pack">
+            <span class="saklar"></span>
+            <div>
+              <b>Paket soal aktif</b>
+              <small>Nonaktifkan agar pemain tidak bisa memulai permainan (soal disembunyikan).</small>
+            </div>
+          </label>
+          <label class="saklar-bar">
+            <input type="checkbox" id="sw-acak">
+            <span class="saklar"></span>
+            <div>
+              <b>Acak posisi soal di peta</b>
+              <small>Setiap pemain mendapat penempatan kristal soal yang diacak (tetap stabil selama sesi).</small>
+            </div>
+          </label>
+          <button type="button" id="btn-simpan-settings" class="btn btn-utama">Simpan Pengaturan</button>
+          <p id="settings-pesan" class="f-error hidden"></p>
+        </div>
+
+        <div class="kartu-blok">
+          <h2>Ganti Password Admin</h2>
+          <label class="f-field"><span>Password Baru <b>*</b> <small>min. 6 karakter</small></span>
+            <input type="password" id="in-pass-baru" minlength="6" placeholder="password baru">
+          </label>
+          <label class="f-field"><span>Ulangi Password <b>*</b></span>
+            <input type="password" id="in-pass-ulang" minlength="6" placeholder="ulangi password">
+          </label>
+          <button type="button" id="btn-ganti-pass" class="btn">Perbarui Password</button>
+          <p id="pass-pesan" class="f-error hidden"></p>
+        </div>
+
+        <div class="kartu-blok">
+          <h2>Informasi Sistem</h2>
+          <ul class="info-sistem">
+            <li><b>Penyimpanan:</b> file JSON di <code>server/data/</code> (soal, nilai, pengaturan).</li>
+            <li><b>Password admin:</b> <code>server/config.json</code> (atau ubah lewat form di samping).</li>
+            <li><b>Format CSV soal:</b> <code>id, pertanyaan, tipe, opsi1..opsi4, kunci, poin, kategori, aktif</code>.</li>
+            <li><b>Kunci isian:</b> beberapa jawaban benar dipisah <code>|</code>, contoh: <code>Tokyo|Tokio</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= MODAL TAMBAH/EDIT SOAL ================= -->
+<div id="modal-soal" class="overlay hidden">
+  <form id="form-soal" class="kartu-modal" autocomplete="off">
+    <h2 id="soal-modal-judul">Tambah Soal</h2>
+
+    <label class="f-field"><span>Pertanyaan <b>*</b></span>
+      <textarea id="soal-pertanyaan" rows="3" required placeholder="Tulis pertanyaan..."></textarea>
+    </label>
+
+    <div class="f-row">
+      <label class="f-field"><span>Tipe Soal</span>
+        <select id="soal-tipe">
+          <option value="pg">Pilihan Ganda</option>
+          <option value="isian">Isian Singkat</option>
+        </select>
+      </label>
+      <label class="f-field"><span>Poin <b>*</b></span>
+        <input type="number" id="soal-poin" min="0" max="1000" value="10" required>
+      </label>
+      <label class="f-field"><span>Kategori / Topik</span>
+        <input type="text" id="soal-kategori" maxlength="40" placeholder="cth. Matematika">
+      </label>
+    </div>
+
+    <div id="blok-opsi">
+      <span class="f-label">Opsi Jawaban <b>*</b> <small>(minimal 2, maksimal 6)</small></span>
+      <div id="daftar-opsi" class="daftar-opsi"></div>
+      <button type="button" id="btn-tambah-opsi" class="btn btn-kecil btn-ghost">+ Tambah Opsi</button>
+    </div>
+
+    <div id="blok-kunci" class="f-field">
+      <span>Kunci Jawaban <b>*</b></span>
+      <select id="soal-kunci"></select>
+    </div>
+
+    <div id="blok-kunci-isian" class="f-field hidden">
+      <span>Kunci Jawaban <b>*</b> <small>(opsi alternatif dipisah "|")</small></span>
+      <input type="text" id="soal-kunci-teks" placeholder="cth. Tokyo|Tokio">
+    </div>
+
+    <label class="cek-bar"><input type="checkbox" id="soal-aktif" checked> Soal aktif (tampil untuk pemain)</label>
+
+    <p id="soal-error" class="f-error hidden"></p>
+    <div class="modal-aksi">
+      <button type="button" id="btn-batal-soal" class="btn btn-ghost">Batal</button>
+      <button type="submit" id="btn-simpan-soal" class="btn btn-utama">Simpan Soal</button>
+    </div>
+  </form>
+</div>
+
+<!-- ================= MODAL IMPORT ================= -->
+<div id="modal-import" class="overlay hidden">
+  <div class="kartu-modal">
+    <h2>Import Soal</h2>
+    <p class="teks-bantu">Tempel data JSON / CSV atau pilih file. Baris CSV: <code>id, pertanyaan, tipe, opsi1..opsi4, kunci, poin, kategori, aktif</code> (baris judul wajib ada).</p>
+
+    <div class="f-row">
+      <label class="f-field"><span>Mode</span>
+        <select id="import-mode">
+          <option value="merge">Tambah / perbarui (gabung)</option>
+          <option value="replace">Ganti semua soal</option>
+        </select>
+      </label>
+      <label class="f-field"><span>File (JSON/CSV)</span>
+        <input type="file" id="import-file" accept=".json,.csv,.txt">
+      </label>
+    </div>
+
+    <label class="f-field"><span>Atau tempel isi file:</span>
+      <textarea id="import-teks" rows="8" placeholder='[{"pertanyaan":"...","tipe":"pg","opsi":["a","b"],"kunci":0,"poin":10}]'></textarea>
+    </label>
+
+    <p id="import-hasil" class="f-error hidden"></p>
+    <div class="modal-aksi">
+      <button type="button" id="btn-batal-import" class="btn btn-ghost">Batal</button>
+      <button type="button" id="btn-jalan-import" class="btn btn-utama">Import Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-admin" class="toast-admin hidden"></div>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
