@@ -1,17 +1,44 @@
-/** api.js — pembungkus fetch JSON + penyimpanan sesi lokal. */
+/** api.js — pembungkus fetch ke api.php (backend PHP) + penyimpanan sesi lokal. */
+
+const API_BASE = 'api.php';
+
+function bangunUrl(path, token) {
+  // path berformat '/api/...' → api.php?r=...
+  let s = String(path);
+  if (s.startsWith('/api/')) s = s.slice(5);
+  else if (s.startsWith('/')) s = s.slice(1);
+  const qi = s.indexOf('?');
+  const r = qi >= 0 ? s.slice(0, qi) : s;
+  const qs = qi >= 0 ? s.slice(qi + 1) : '';
+  let url = API_BASE + '?r=' + encodeURIComponent(r);
+  if (qs) url += '&' + qs;
+  if (token) url += '&tk=' + encodeURIComponent(token);
+  return url;
+}
 
 export async function api(path, { method = 'GET', body, token } = {}) {
-  const opt = { method, headers: {} };
-  if (body !== undefined) {
+  let m = String(method || 'GET').toUpperCase();
+  let payload = body;
+  // Tulis selalu lewat POST + _method agar kompatibel dengan semua hosting PHP.
+  if (m !== 'GET') {
+    payload = Object.assign({}, body || {});
+    if (m !== 'POST') {
+      payload._method = m;
+      m = 'POST';
+    }
+  }
+  const opt = { method: m, headers: {} };
+  if (payload !== undefined) {
     opt.headers['Content-Type'] = 'application/json';
-    opt.body = JSON.stringify(body);
+    opt.body = JSON.stringify(payload);
   }
   if (token) opt.headers['Authorization'] = 'Bearer ' + token;
+
   let res;
   try {
-    res = await fetch(path, opt);
+    res = await fetch(bangunUrl(path, token), opt);
   } catch (e) {
-    throw new Error('Tidak bisa terhubung ke server. Pastikan server berjalan.');
+    throw new Error('Gagal menghubungi api.php. Pastikan file api.php ikut terupload dan hosting mendukung PHP.');
   }
   let data = null;
   try { data = await res.json(); } catch (e) { /* respons non-JSON */ }

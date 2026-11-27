@@ -21,7 +21,7 @@
     </label>
     <p id="login-error" class="f-error hidden"></p>
     <button type="submit" class="btn btn-utama btn-blok">Masuk</button>
-    <a class="login-kembali" href="/">Kembali ke permainan</a>
+    <a class="login-kembali" href="index.html">Kembali ke permainan</a>
   </form>
 </section>
 
@@ -41,7 +41,7 @@
       <button type="button" data-tab="pengaturan">Pengaturan</button>
     </nav>
     <div class="topbar-kanan">
-      <a href="/" class="btn btn-ghost btn-kecil" target="_blank">Buka Game</a>
+      <a href="index.html" class="btn btn-ghost btn-kecil" target="_blank">Buka Game</a>
       <button type="button" id="btn-logout" class="btn btn-kecil">Keluar</button>
     </div>
   </header>
@@ -56,7 +56,7 @@
         <div class="kartu-ringkas"><span>Total Poin</span><b id="ringkas-total-poin">0</b></div>
         <div class="aksi-bar">
           <button type="button" id="btn-tambah-soal" class="btn btn-utama">+ Tambah Soal</button>
-          <button type="button" id="btn-import" class="btn">Import JSON / CSV</button>
+          <button type="button" id="btn-import" class="btn">Import Soal (Word/JSON/CSV)</button>
           <button type="button" id="btn-export-json" class="btn">Export JSON</button>
           <button type="button" id="btn-export-csv" class="btn">Export CSV</button>
           <button type="button" id="btn-refresh-soal" class="btn btn-ghost">Muat Ulang</button>
@@ -81,7 +81,7 @@
             <tbody id="tbody-soal"></tbody>
           </table>
         </div>
-        <p id="tabel-soal-kosong" class="tabel-kosong hidden">Belum ada soal. Klik "Tambah Soal" atau "Import JSON / CSV".</p>
+        <p id="tabel-soal-kosong" class="tabel-kosong hidden">Belum ada soal. Klik "Tambah Soal" atau "Import Soal (Word/JSON/CSV)".</p>
       </div>
     </section>
 
@@ -190,10 +190,12 @@
         <div class="kartu-blok">
           <h2>Informasi Sistem</h2>
           <ul class="info-sistem">
-            <li><b>Penyimpanan:</b> file JSON di <code>server/data/</code> (soal, nilai, pengaturan).</li>
-            <li><b>Password admin:</b> <code>server/config.json</code> (atau ubah lewat form di samping).</li>
+            <li><b>Backend:</b> PHP (<code>api.php</code>) — tanpa Node.js, cocok untuk hosting shared (cPanel).</li>
+            <li><b>Penyimpanan:</b> file JSON di folder <code>data/</code> (di luar root web bila memungkinkan; bila di dalam, dilindungi <code>.htaccess</code>).</li>
+            <li><b>Password admin:</b> <code>data/config.json</code> (atau ubah lewat form di samping).</li>
             <li><b>Format CSV soal:</b> <code>id, pertanyaan, tipe, opsi1..opsi4, kunci, poin, kategori, aktif</code>.</li>
             <li><b>Kunci isian:</b> beberapa jawaban benar dipisah <code>|</code>, contoh: <code>Tokyo|Tokio</code>.</li>
+            <li><b>Backup:</b> salin seluruh isi folder <code>data/</code>.</li>
           </ul>
         </div>
       </div>
@@ -255,7 +257,7 @@
 <div id="modal-import" class="overlay hidden">
   <div class="kartu-modal">
     <h2>Import Soal</h2>
-    <p class="teks-bantu">Tempel data JSON / CSV atau pilih file. Baris CSV: <code>id, pertanyaan, tipe, opsi1..opsi4, kunci, poin, kategori, aktif</code> (baris judul wajib ada).</p>
+    <p class="teks-bantu">Tempel langsung dari <b>Microsoft Word</b>, atau tempel/pilih file JSON atau CSV. Baris CSV: <code>id, pertanyaan, tipe, opsi1..opsi4, kunci, poin, kategori, aktif</code> (baris judul wajib ada).</p>
 
     <div class="f-row">
       <label class="f-field"><span>Mode</span>
@@ -269,9 +271,10 @@
       </label>
     </div>
 
-    <label class="f-field"><span>Atau tempel isi file:</span>
-      <textarea id="import-teks" rows="8" placeholder='[{"pertanyaan":"...","tipe":"pg","opsi":["a","b"],"kunci":0,"poin":10}]'></textarea>
+    <label class="f-field"><span>Atau tempel dari Word / teks:</span>
+      <textarea id="import-teks" rows="10" placeholder="1. Berapa hasil 2+2?&#10;A. 3&#10;B. 4&#10;C. 5&#10;D. 6&#10;Kunci: B&#10;&#10;2. Ibu kota Jepang?&#10;A. Seoul&#10;B. Tokyo&#10;Kunci: B"></textarea>
     </label>
+    <p class="teks-bantu">Dari Word: blok teks soal lalu <b>Ctrl+C</b>, tempel di kotak ini. Opsi yang <b>ditebal / digarisbawahi</b> otomatis dijadikan kunci. Tanpa baris opsi = soal isian. Pisahkan soal dengan baris kosong.</p>
 
     <p id="import-hasil" class="f-error hidden"></p>
     <div class="modal-aksi">
@@ -283,6 +286,6 @@
 
 <div id="toast-admin" class="toast-admin hidden"></div>
 
-<script src="js/admin.js"></script>
+<script type="module" src="js/admin.js"></script>
 </body>
 </html>

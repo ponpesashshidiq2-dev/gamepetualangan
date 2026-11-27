@@ -1,8 +1,10 @@
 /* ============================================================
-   admin.js — Panel Admin: login, CRUD soal, import/export,
+   admin.js — Panel Admin: login, CRUD soal, import (Word/JSON/CSV),
    daftar nilai (cari/filter/sort/reset/export), pengaturan.
-   (skrip klasik — tanpa dependensi eksternal)
    ============================================================ */
+import { api } from './api.js';
+import { parseSoalDariTeks, deteksiFormatImport, htmlKeTeks } from './word-import.js';
+
 (function () {
   'use strict';
 
@@ -51,16 +53,12 @@
 
   async function req(url, opt) {
     opt = opt || {};
-    const headers = { Authorization: 'Bearer ' + token() };
-    if (opt.body !== undefined) headers['Content-Type'] = 'application/json';
-    const res = await fetch(url, {
-      method: opt.method || 'GET', headers, body: opt.body !== undefined ? JSON.stringify(opt.body) : undefined,
-    });
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* non-json */ }
-    if (res.status === 401) { paksaKeluar(); throw new Error('Sesi admin berakhir. Silakan login ulang.'); }
-    if (!res.ok) throw new Error((data && data.error) || 'Gagal (' + res.status + ')');
-    return data;
+    try {
+      return await api(url, { method: opt.method || 'GET', body: opt.body, token: token() });
+    } catch (e) {
+      if (e.status === 401) { paksaKeluar(); throw new Error('Sesi admin berakhir. Silakan login ulang.'); }
+      throw e;
+    }
   }
 
   function fmtDurasi(d) {
@@ -114,12 +112,10 @@
     e.preventDefault();
     pesan(el.loginErr, '');
     try {
-      const r = await fetch('/api/admin/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: el.pass.value }),
+      const d = await api('/api/admin/login', {
+        method: 'POST',
+        body: { password: el.pass.value },
       });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { pesan(el.loginErr, d.error || 'Login gagal.'); return; }
       localStorage.setItem(TOKEN_KEY, d.token);
       el.pass.value = '';
       tampilkanAplikasi();
@@ -310,11 +306,11 @@
   /* ---------- export soal ---------- */
   async function unduhSoal(format) {
     try {
-      const res = await fetch('/api/admin/questions/export?format=' + format, {
-        headers: { Authorization: 'Bearer ' + token() },
-      });
-      if (!res.ok) throw new Error('Export gagal (' + res.status + ')');
-      const blob = await res.blob();
+      const r = await req('/api/admin/questions/export?format=' + format);
+      const isi = String(r.content || '');
+      const blob = format === 'csv'
+        ? new Blob([isi], { type: 'text/csv;charset=utf-8' })
+        : new Blob([isi], { type: 'application/json;charset=utf-8' });
       unduhBlob(blob, 'soal-' + stamp() + (format === 'csv' ? '.csv' : '.json'));
       toast('File soal (' + format.toUpperCase() + ') diunduh.');
     } catch (e) { toast(e.message, 'err'); }
@@ -323,30 +319,88 @@
   $('btn-export-csv').addEventListener('click', () => unduhSoal('csv'));
   $('btn-refresh-soal').addEventListener('click', () => muatSoal().then(() => toast('Daftar soal dimuat ulang.')).catch((e) => toast(e.message, 'err')));
 
-  /* ---------- import ---------- */
+  /* ---------- import (Word / JSON / CSV) ---------- */
+  let impParsed = null;
+
   $('btn-import').addEventListener('click', () => {
     pesan(el.impHasil, '');
     el.impTeks.value = '';
     el.impFile.value = '';
+    impParsed = null;
     el.modalImport.classList.remove('hidden');
   });
   $('btn-batal-import').addEventListener('click', () => el.modalImport.classList.add('hidden'));
+
   el.impFile.addEventListener('change', () => {
     const f = el.impFile.files[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = () => { el.impTeks.value = r.result; pesan(el.impHasil, 'File "' + f.name + '" dimuat. Klik Import Sekarang.', 'ok'); };
+    r.onload = () => { el.impTeks.value = r.result; pratinjauImpor(); };
     r.readAsText(f);
   });
+
+  // Tempel dari Word: tangkap HTML dari clipboard agar teks tebal/garisbawahi
+  // (penanda kunci jawaban) tetap terbaca, lalu tampilkan pratinjau.
+  el.impTeks.addEventListener('paste', (e) => {
+    const cd = e.clipboardData;
+    const html = cd ? cd.getData('text/html') : '';
+    if (html && /<\/?(p|div|li|h[1-6]|span|b|u|br)/i.test(html)) {
+      e.preventDefault();
+      const teks = htmlKeTeks(html);
+      const awal = el.impTeks.selectionStart;
+      const akhir = el.impTeks.selectionEnd;
+      const isi = el.impTeks.value;
+      el.impTeks.value = isi.slice(0, awal) + teks + isi.slice(akhir);
+      const pos = awal + teks.length;
+      el.impTeks.setSelectionRange(pos, pos);
+      pratinjauImpor();
+    } else {
+      setTimeout(pratinjauImpor, 0);
+    }
+  });
+  el.impTeks.addEventListener('input', () => { pratinjauImpor(); });
+
+  function pratinjauImpor() {
+    impParsed = null;
+    const teks = el.impTeks.value;
+    if (!teks.trim()) { pesan(el.impHasil, ''); return; }
+    const format = deteksiFormatImport(teks);
+    if (format === 'word') {
+      const h = parseSoalDariTeks(teks);
+      if (!h.soal.length) {
+        pesan(el.impHasil, 'Tidak ada soal terdeteksi. Format yang dikenali: nomor pertanyaan, opsi "A. ...", lalu baris "Kunci: B" (pisahkan soal dengan baris kosong).');
+        return;
+      }
+      impParsed = h;
+      let msg = `Terdeteksi ${h.stats.total} soal (${h.stats.pg} pilihan ganda, ${h.stats.isian} isian). Klik Import Sekarang.`;
+      if (h.errors.length) msg += ' Catatan: ' + h.errors.slice(0, 3).join(' | ');
+      pesan(el.impHasil, msg, h.errors.length ? '' : 'ok');
+    } else if (format === 'csv') {
+      pesan(el.impHasil, 'Terdeteksi data CSV. Klik Import Sekarang.', 'ok');
+    } else {
+      pesan(el.impHasil, 'Terdeteksi data JSON. Klik Import Sekarang.', 'ok');
+    }
+  }
+
   $('btn-jalan-import').addEventListener('click', async () => {
     const teks = el.impTeks.value.trim();
     if (!teks) { pesan(el.impHasil, 'Pilih file atau tempel data terlebih dahulu.'); return; }
-    const format = (teks[0] === '[' || teks[0] === '{') ? 'json' : 'csv';
+    const format = deteksiFormatImport(teks) || 'word';
     try {
-      const r = await req('/api/admin/questions/import', {
-        method: 'POST', body: { mode: el.impMode.value, format, data: teks },
-      });
-      let msg = `Import ${format.toUpperCase()} selesai — ditambah ${r.ditambah}, diperbarui ${r.diperbarui}.`;
+      let body;
+      if (format === 'word') {
+        const h = impParsed || parseSoalDariTeks(teks);
+        if (!h.soal.length) {
+          pesan(el.impHasil, 'Tidak ada soal valid untuk diimport. ' + (h.errors[0] || ''));
+          return;
+        }
+        body = { mode: el.impMode.value, format: 'json', data: JSON.stringify(h.soal) };
+      } else {
+        body = { mode: el.impMode.value, format, data: teks };
+      }
+      const r = await req('/api/admin/questions/import', { method: 'POST', body });
+      const label = format === 'word' ? 'WORD' : format.toUpperCase();
+      let msg = `Import ${label} selesai — ditambah ${r.ditambah}, diperbarui ${r.diperbarui}.`;
       if (r.errors && r.errors.length) msg += ' Catatan: ' + r.errors.slice(0, 5).join(' | ') + (r.errors.length > 5 ? ` (+${r.errors.length - 5} lain)` : '');
       pesan(el.impHasil, msg, (r.errors && r.errors.length) ? '' : 'ok');
       await muatSoal();
